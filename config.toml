@@ -1,8 +1,10 @@
 [extension]
 name = "MeowFace"
+translation-key = "MEOWFACE_EXTENSION_NAME"
 
 [[resources]]
 name = "Tracker"
 tags = ["tracker"]
 entrypoint = "tracker.gd"
 gui = "gui.gd"
+translation-key = "MEOWFACE_EXTENSION_NAME"

@@ -1,0 +1,11 @@
+MEOWFACE_EXTENSION_NAME="MeowFace"
+
+MEOWFACE_TRACKER_NAME="MeowFaceTracker"
+
+MEOWFACE_USAGE_LABEL_TEXT="Click to start tracking.
+
+Requires the MeowFace installed on an Android device."
+
+MEOWFACE_TOGGLE_TRACKING_START="Start"
+MEOWFACE_TOGGLE_TRACKING_STOP="Stop"
+MEOWFACE_TOGGLE_TRACKING_BUTTON_HINT="Toggle tracking"

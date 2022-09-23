@@ -35,7 +35,7 @@ func _perform_reception() -> void:
 
 func _receive() -> void:
 	if client.put_packet(JSON.print({
-				"messsageType": "iOSTrackingDataRequest",
+				"messsageType": "iOSTrackingDataRequest", # HMMMM
 				"time": 1.0,
 				"sentBy": "vpuppr",
 				"ports": [
@@ -44,10 +44,15 @@ func _receive() -> void:
 			}).to_utf8()) != OK:
 		logger.error("Unable to send packet")
 	
+	if client.get_available_packet_count() < 1:
+		return
+	if client.get_packet_error() != OK:
+		return
+	
 	var packet := client.get_packet()
 	if packet.size() < 1:
 		return
-
+	
 	tracking_data = parse_json(packet.get_string_from_utf8())
 
 #-----------------------------------------------------------------------------#
@@ -64,7 +69,7 @@ func start_receiver() -> void:
 
 	var address: String = "192.168.88.229"
 	var port: int = 21412
-
+	
 	client = PacketPeerUDP.new()
 	client.set_broadcast_enabled(true)
 	client.set_dest_address(address, port)
@@ -82,12 +87,13 @@ func stop_receiver() -> void:
 	logger.info("Stopping face tracker")
 
 	stop_reception = true
+	
 
 	if receive_thread != null and receive_thread.is_active():
 		receive_thread.wait_to_finish()
 		receive_thread = null
 	
-	if client.is_connected_to_host():
+	if client != null and client.is_connected_to_host():
 		client.close()
 		client = null
 
@@ -95,7 +101,7 @@ func set_offsets() -> void:
 	pass
 
 func has_data() -> bool:
-	return true # TODO stub
+	return not tracking_data.empty()
 
 func apply(interpolation_data: InterpolationData, model: PuppetTrait) -> void:
 	if not tracking_data.get("FaceFound", false):
@@ -108,9 +114,15 @@ func apply(interpolation_data: InterpolationData, model: PuppetTrait) -> void:
 	
 	interpolation_data.bone_translation.target_value = Vector3(-tx.y, -tx.x, tx.z)
 	interpolation_data.bone_rotation.target_value = Vector3(-rx.y, -rx.x, rx.z)
-	interpolation_data.left_gaze.target_value = Vector3(eye_l.z, eye_l.y, eye_l.x)
-	interpolation_data.right_gaze.target_value = Vector3(eye_r.z, eye_r.y, eye_r.x)
+	interpolation_data.left_gaze.target_value = Vector3(eye_l.y, eye_l.x, eye_l.z) / 100.0
+	interpolation_data.right_gaze.target_value = Vector3(eye_r.y, eye_r.x, eye_r.z) / 100.0
 	
 	for data in tracking_data.get("BlendShapes", []):
-		for mesh_instance in model.skeleton.get_children():
-			mesh_instance.set("blend_shapes/%s" % data.k, data.v)
+		match data.k:
+			"eyeBlinkLeft":
+				interpolation_data.left_blink.target_value = 1.0 - data.v
+			"eyeBlinkRight":
+				interpolation_data.right_blink.target_value = 1.0 - data.v
+			_:
+				for mesh_instance in model.skeleton.get_children():
+					mesh_instance.set("blend_shapes/%s" % data.k, data.v)
