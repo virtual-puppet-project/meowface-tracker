@@ -1,0 +1,8 @@
+[extension]
+name = "MeowFace"
+
+[[resources]]
+name = "Tracker"
+tags = ["tracker"]
+entrypoint = "tracker.gd"
+gui = "gui.gd"
