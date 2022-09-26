@@ -4,7 +4,10 @@ MEOWFACE_TRACKER_NAME="MeowFaceTracker"
 
 MEOWFACE_USAGE_LABEL_TEXT="Click to start tracking.
 
-Requires the MeowFace installed on an Android device."
+Requires MeowFace installed on an Android device."
+
+MEOWFACE_IP_ADDRESS_LABEL_TEXT="IP address: "
+MEOWFACE_IP_ADDRESS_HINT="The IP address of the device running MeowFace. Should not include the port."
 
 MEOWFACE_TOGGLE_TRACKING_START="Start"
 MEOWFACE_TOGGLE_TRACKING_STOP="Stop"
