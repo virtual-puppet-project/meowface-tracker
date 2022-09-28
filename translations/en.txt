@@ -1,4 +1,5 @@
 MEOWFACE_EXTENSION_NAME="MeowFace"
+MEOWFACE_TRACKER_ADDRESS="meowface_tracker_address"
 
 MEOWFACE_TRACKER_NAME="MeowFaceTracker"
 
