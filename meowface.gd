@@ -4,7 +4,32 @@ const ConfigTrackerAddress: String = "MEOWFACE_TRACKER_ADDRESS"
 
 const EMPTY_VEC3_DICT := {"x": 0.0, "y": 0.0, "z": 0.0}
 
-var tracking_data := {}
+class MeowFaceData:
+	var has_data := false
+	
+	var blend_shapes := {}
+
+	var head_rotation := Vector3.ZERO
+	var head_position := Vector3.ZERO
+
+	var left_eye_rotation := Vector3.ZERO
+	var right_eye_rotation := Vector3.ZERO
+
+	func set_blend_shape(name: String, value: float) -> void:
+		blend_shapes[name] = value
+
+	func set_head_rotation(data: Dictionary) -> void:
+		head_rotation = Vector3(data.y, data.x, -data.z)
+
+	func set_head_position(data: Dictionary) -> void:
+		head_position = Vector3(data.y, data.x, -data.z)
+
+	func set_left_eye_rotation(data: Dictionary) -> void:
+		left_eye_rotation = Vector3(-data.x, -data.y, data.z) / 100.0
+
+	func set_right_eye_rotation(data: Dictionary) -> void:
+		right_eye_rotation = Vector3(-data.x, -data.y, data.z) / 100.0
+var mf_data := MeowFaceData.new()
 
 var logger := Logger.new(get_name())
 
@@ -37,7 +62,7 @@ func _perform_reception() -> void:
 
 func _receive() -> void:
 	client.put_packet(JSON.print({
-		"messsageType": "iOSTrackingDataRequest", # HMMMM
+		"messageType": "iOSTrackingDataRequest", # HMMMM
 		"time": 1.0,
 		"sentBy": "vpuppr",
 		"ports": [
@@ -53,10 +78,16 @@ func _receive() -> void:
 	var packet := client.get_packet()
 	if packet.size() < 1:
 		return
-	
-	var parsed_dictionary: Dictionary = parse_json(packet.get_string_from_utf8())
-	for key in parsed_dictionary.keys():
-		tracking_data[key] = parsed_dictionary[key]
+
+	var data: Dictionary = parse_json(packet.get_string_from_utf8())
+
+	mf_data.has_data = data.get("FaceFound", false)
+	mf_data.set_head_position(data.get("Position", EMPTY_VEC3_DICT))
+	mf_data.set_head_rotation(data.get("Rotation", EMPTY_VEC3_DICT))
+	mf_data.set_left_eye_rotation(data.get("EyeLeft", EMPTY_VEC3_DICT))
+	mf_data.set_right_eye_rotation(data.get("EyeRight", EMPTY_VEC3_DICT))
+	for key in data.get("BlendShapes", []):
+		mf_data.set_blend_shape(key.k, key.v)
 
 #-----------------------------------------------------------------------------#
 # Public functions                                                            #
@@ -66,8 +97,6 @@ func get_name() -> String:
 	return tr("MEOWFACE_TRACKER_NAME")
 
 func start_receiver() -> void:
-	# TODO many of these values are stubs
-
 	logger.info("Starting receiver")
 
 	var address: String = AM.cm.get_data(ConfigTrackerAddress)
@@ -100,31 +129,27 @@ func stop_receiver() -> void:
 		client = null
 
 func set_offsets() -> void:
-	pass
+	stored_offsets.translation_offset = mf_data.head_position
+	stored_offsets.rotation_offset = mf_data.head_rotation
+	stored_offsets.left_eye_gaze_offset = mf_data.left_eye_rotation
+	stored_offsets.right_eye_gaze_offset = mf_data.right_eye_rotation
 
 func has_data() -> bool:
-	return not tracking_data.empty()
+	return mf_data.has_data
 
 func apply(interpolation_data: InterpolationData, model: PuppetTrait) -> void:
-	if not tracking_data.get("FaceFound", false):
-		return
+	interpolation_data.bone_translation.target_value = stored_offsets.translation_offset - mf_data.head_position
+	interpolation_data.bone_rotation.target_value = stored_offsets.rotation_offset - mf_data.head_rotation
+
+	interpolation_data.left_gaze.target_value = stored_offsets.left_eye_gaze_offset - mf_data.left_eye_rotation
+	interpolation_data.right_gaze.target_value = stored_offsets.right_eye_gaze_offset - mf_data.right_eye_rotation
 	
-	var tx: Dictionary = tracking_data.get("Position", EMPTY_VEC3_DICT)
-	var rx: Dictionary = tracking_data.get("Rotation", EMPTY_VEC3_DICT)
-	
-	interpolation_data.bone_translation.target_value = Vector3(-tx.y, -tx.x, tx.z)
-	interpolation_data.bone_rotation.target_value = Vector3(-rx.y, -rx.x, rx.z)
-	interpolation_data.left_gaze.target_value = JSONUtil.dict_to_vector3(
-		tracking_data.get("EyeRight", EMPTY_VEC3_DICT)) / 100.0
-	interpolation_data.right_gaze.target_value = JSONUtil.dict_to_vector3(
-		tracking_data.get("EyeLeft", EMPTY_VEC3_DICT)) / 100.0
-	
-	for data in tracking_data.get("BlendShapes", []):
-		match data.k:
+	for key in mf_data.blend_shapes.keys():
+		match key:
 			"eyeBlinkLeft":
-				interpolation_data.right_blink.target_value = 1.0 - data.v
+				interpolation_data.right_blink.target_value = 1.0 - mf_data.blend_shapes[key]
 			"eyeBlinkRight":
-				interpolation_data.left_blink.target_value = 1.0 - data.v
+				interpolation_data.left_blink.target_value = 1.0 - mf_data.blend_shapes[key]
 			_:
 				for mesh_instance in model.skeleton.get_children():
-					mesh_instance.set("blend_shapes/%s" % data.k, data.v)
+					mesh_instance.set("blend_shapes/%s" % key, mf_data.blend_shapes[key])

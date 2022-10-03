@@ -113,7 +113,7 @@ func _on_toggle_tracking(button: Button) -> void:
 	else:
 		logger.debug("Starting MeowFace tracker")
 
-		var res: Result = Safely.wrap(AM.em.load_resource("MeowFace", "tracker.gd"))
+		var res: Result = Safely.wrap(AM.em.load_resource("MeowFace", "meowface.gd"))
 		if res.is_err():
 			logger.error(res)
 			return

@@ -5,6 +5,6 @@ translation-key = "MEOWFACE_EXTENSION_NAME"
 [[resources]]
 name = "Tracker"
 tags = ["tracker"]
-entrypoint = "tracker.gd"
+entrypoint = "meowface.gd"
 gui = "gui.gd"
 translation-key = "MEOWFACE_EXTENSION_NAME"
